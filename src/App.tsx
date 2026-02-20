@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-// This is a mock of google.script.run that will be available in the GAS environment
-declare const google: any;
+// IMPORTANT: Replace this with your Google Apps Script Web App URL
+// Example: https://script.google.com/macros/s/AKfycb.../exec
+const GOOGLE_SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzLvXfLvclrqPsOY5oLxbsTo_grDNfUmZ8wljSBYKmsP4gZBWlOVu1drL3qJUlbZPg8/exec'; 
 
 export default function App() {
   const [schoolId, setSchoolId] = useState('');
@@ -14,21 +15,21 @@ export default function App() {
   const [status, setStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
-    if (schoolId.length === 8) {
+    if (schoolId.length === 8 && GOOGLE_SHEET_API_URL) {
       setLoading(true);
-      google.script.run
-        .withSuccessHandler((info: any) => {
+      fetch(`${GOOGLE_SHEET_API_URL}?action=getSchoolInfo&schoolId=${schoolId}`)
+        .then(res => res.json())
+        .then((info: any) => {
           setSchoolInfo(info);
           if (info && info.manager) {
             setManagerName(info.manager);
           }
           setLoading(false);
         })
-        .withFailureHandler(() => {
+        .catch(() => {
           setSchoolInfo(null);
           setLoading(false);
-        })
-        .getSchoolInfo(schoolId);
+        });
     } else {
       setSchoolInfo(null);
     }
@@ -36,28 +37,45 @@ export default function App() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!GOOGLE_SHEET_API_URL) {
+      setStatus({ success: false, message: 'กรุณาตั้งค่า Web App URL ในโค้ดก่อนใช้งาน' });
+      return;
+    }
+    
     setLoading(true);
     setStatus(null);
 
-    google.script.run
-      .withSuccessHandler((response: any) => {
-        setStatus(response);
-        setLoading(false);
-        if (response.success) {
-          // Reset form
-          setSchoolId('');
-          setSchoolInfo(null);
-          setName('');
-          setManagerName('');
-          setPhone('');
-          setEmail('');
-        }
-      })
-      .withFailureHandler(() => {
-        setStatus({ success: false, message: 'เกิดข้อผิดพลาดในการสื่อสารกับเซิร์ฟเวอร์' });
-        setLoading(false);
-      })
-      .processRequest(schoolId, email, name, phone, managerName);
+    const formData = {
+      schoolId,
+      email,
+      name,
+      phone,
+      managerName,
+    };
+
+    fetch(GOOGLE_SHEET_API_URL, {
+      method: 'POST',
+      mode: 'no-cors', // Required for GAS POST
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'processRequest', data: formData })
+    })
+    .then(() => {
+      // Since no-cors doesn't allow reading the response, we assume success or show a general message
+      setStatus({ success: true, message: 'คำขอของท่านถูกส่งแล้ว! กรุณาตรวจสอบอีเมลของท่าน' });
+      setLoading(false);
+      // Reset form
+      setSchoolId('');
+      setSchoolInfo(null);
+      setName('');
+      setManagerName('');
+      setPhone('');
+      setEmail('');
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      setStatus({ success: false, message: 'เกิดข้อผิดพลาดในการส่งข้อมูล' });
+      setLoading(false);
+    });
   };
 
   return (
@@ -74,7 +92,7 @@ export default function App() {
             <img src="https://img2.pic.in.th/unnamed-5.png" alt="Sukhothai 2 Logo" className="h-20 w-auto drop-shadow-md animate-fade-in delay-100" />
           </div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">ระบบขอรับ Username & Password</h1>
-          <p className="text-slate-600 font-semibold mt-3 text-base">สำนักงานเขตพื้นที่การศึกษาประถมศึกษาสุโขทัย เขต 2</p>
+          <p className="text-slate-500 mt-2 text-sm">สำนักงานเขตพื้นที่การศึกษาประถมศึกษาสุโขทัย เขต 2</p>
           <p className="text-slate-500 mt-2 text-sm">กรอกข้อมูลเพื่อรับข้อมูลผ่านทางอีเมล</p>
         </div>
 
@@ -90,6 +108,7 @@ export default function App() {
             {schoolInfo && (
               <div className="animate-fade-in bg-blue-50/50 border border-blue-100 rounded-xl p-3">
                 <div className="flex items-center gap-2 text-blue-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                   <span className="text-xs font-bold">{schoolInfo.name}</span>
                 </div>
               </div>
@@ -128,6 +147,7 @@ export default function App() {
                 className="w-full relative overflow-hidden group bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl transition-all duration-200 shadow-[0_4px_14px_0_rgba(37,99,235,0.39)] hover:shadow-[0_6px_20px_rgba(37,99,235,0.23)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70">
                 <span className="relative z-10 flex items-center justify-center gap-2">
                   {loading ? 'กำลังส่ง...' : 'ส่งคำขอข้อมูล'}
+                  {!loading && <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>}
                 </span>
               </button>
             </div>
@@ -145,14 +165,10 @@ export default function App() {
       <div className="mt-8 text-center px-4">
         <p className="text-xs text-slate-500 font-medium">
           พัฒนาโดย KITIM © 2026
-        </p>
-        <p className="text-xs text-slate-400 font-medium mt-2">
           ผู้ร่วมพัฒนา นายสุนทร ชมชิต ศึกษานิเทศก์<br />
-          กลุ่มงานประกันคุณภาพการศึกษา กลุ่มนิเทศ ติดตามและประเมินผลการจัดการศึกษา<br />
+          กลุ่มงานประกันคุณภาพการศึกษา กลุ่มนิเทศ ติดตามและประเมินผลการจัดการศึกษา
           สำนักงานเขตพื้นที่การศึกษาประถมศึกษาสุโขทัย เขต 2
-        </p>
-        <p className="text-xs text-slate-400 font-medium mt-2">
-          © 2026 ระบบอัตโนมัติ • ปลอดภัยและรวดเร็ว
+           © 2026 ระบบอัตโนมัติ • ปลอดภัยและรวดเร็ว
         </p>
       </div>
     </div>
