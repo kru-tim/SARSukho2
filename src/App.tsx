@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 // IMPORTANT: Replace this with your Google Apps Script Web App URL
-// Example: https://script.google.com/macros/s/AKfycb.../exec
 const GOOGLE_SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby77271kbzY6Q5ghUOyMk-B3qkcpyoKhX9mUZbKRdQkCE0sPk45no2gje_zMltxd_goQg/exec'; 
 
 export default function App() {
@@ -12,11 +12,12 @@ export default function App() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const [status, setStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     if (schoolId.length === 8 && GOOGLE_SHEET_API_URL) {
-      setLoading(true);
+      setIsChecking(true);
       fetch(`${GOOGLE_SHEET_API_URL}?action=getSchoolInfo&schoolId=${schoolId}`)
         .then(res => res.json())
         .then((info: any) => {
@@ -24,14 +25,15 @@ export default function App() {
           if (info && info.manager) {
             setManagerName(info.manager);
           }
-          setLoading(false);
+          setIsChecking(false);
         })
         .catch(() => {
           setSchoolInfo(null);
-          setLoading(false);
+          setIsChecking(false);
         });
     } else {
       setSchoolInfo(null);
+      setIsChecking(false);
     }
   }, [schoolId]);
 
@@ -55,21 +57,32 @@ export default function App() {
 
     fetch(GOOGLE_SHEET_API_URL, {
       method: 'POST',
-      mode: 'no-cors', // Required for GAS POST
+      mode: 'no-cors',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'processRequest', data: formData })
     })
     .then(() => {
-      // Since no-cors doesn't allow reading the response, we assume success or show a general message
-      setStatus({ success: true, message: 'คำขอของท่านถูกส่งแล้ว! กรุณาตรวจสอบอีเมลของท่าน' });
       setLoading(false);
-      // Reset form
-      setSchoolId('');
-      setSchoolInfo(null);
-      setName('');
-      setManagerName('');
-      setPhone('');
-      setEmail('');
+      
+      // Success Alert with SweetAlert2
+      Swal.fire({
+        title: 'ส่งคำขอสำเร็จ!',
+        text: 'ระบบได้ส่งข้อมูลไปยังอีเมลของท่านแล้ว กรุณาตรวจสอบอีเมล',
+        icon: 'success',
+        timer: 3000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        willClose: () => {
+          // Reset form after alert closes
+          setSchoolId('');
+          setSchoolInfo(null);
+          setName('');
+          setManagerName('');
+          setPhone('');
+          setEmail('');
+          setStatus(null);
+        }
+      });
     })
     .catch((error) => {
       console.error('Error:', error);
@@ -100,9 +113,17 @@ export default function App() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <label className="block text-xs font-semibold text-slate-500 ml-1 uppercase tracking-wider">รหัส 8 หลักของโรงเรียน</label>
-              <input type="text" value={schoolId} onChange={(e) => setSchoolId(e.target.value)} required maxLength={8} pattern="[0-9]{8}"
-                className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 text-sm font-medium"
-                placeholder="ระบุรหัส 8 หลัก" />
+              <div className="relative">
+                <input type="text" value={schoolId} onChange={(e) => setSchoolId(e.target.value)} required maxLength={8} pattern="[0-9]{8}"
+                  className="block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 text-sm font-medium"
+                  placeholder="ระบุรหัส 8 หลัก" />
+                {isChecking && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2 text-blue-500">
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span className="text-[10px] font-bold">กำลังตรวจสอบ...</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             {schoolInfo && (
@@ -164,11 +185,8 @@ export default function App() {
       
       <div className="mt-8 text-center px-4">
         <p className="text-xs text-slate-500 font-medium">
-          พัฒนาโดย KITIM © 2026
-          ผู้ร่วมพัฒนา นายสุนทร ชมชิต ศึกษานิเทศก์<br />
-          กลุ่มงานประกันคุณภาพการศึกษา กลุ่มนิเทศ ติดตามและประเมินผลการจัดการศึกษา
-          สำนักงานเขตพื้นที่การศึกษาประถมศึกษาสุโขทัย เขต 2
-           © 2026 ระบบอัตโนมัติ • ปลอดภัยและรวดเร็ว
+          พัฒนาโดย KITIM © 2026 ผู้ร่วมพัฒนา นายสุนทร ชมชิต ศึกษานิเทศก์<br />
+          กลุ่มงานประกันคุณภาพการศึกษา กลุ่มนิเทศ ติดตามและประเมินผลการจัดการศึกษา สำนักงานเขตพื้นที่การศึกษาประถมศึกษาสุโขทัย เขต 2 © 2026 ระบบอัตโนมัติ • ปลอดภัยและรวดเร็ว
         </p>
       </div>
     </div>
