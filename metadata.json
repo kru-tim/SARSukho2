@@ -1,0 +1,5 @@
+{
+  "name": "SAR Code Retrieval System",
+  "description": "A Google Apps Script & Web App generator for retrieving SAR codes via email.",
+  "requestFramePermissions": []
+}
