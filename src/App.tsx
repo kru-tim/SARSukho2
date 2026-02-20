@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 // IMPORTANT: Replace this with your Google Apps Script Web App URL
 // Example: https://script.google.com/macros/s/AKfycb.../exec
-const GOOGLE_SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzLvXfLvclrqPsOY5oLxbsTo_grDNfUmZ8wljSBYKmsP4gZBWlOVu1drL3qJUlbZPg8/exec'; 
+const GOOGLE_SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby77271kbzY6Q5ghUOyMk-B3qkcpyoKhX9mUZbKRdQkCE0sPk45no2gje_zMltxd_goQg/exec'; 
 
 export default function App() {
   const [schoolId, setSchoolId] = useState('');
